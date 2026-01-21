@@ -1,3 +1,40 @@
+// Get only admins of a group
+export async function getGroupAdmins(groupId: string): Promise<(GroupMember & { profiles?: { name: string; avatar_url: string | null } })[]> {
+  const q = query(
+    collection(db, collections.groupMembers),
+    where('group_id', '==', groupId),
+    where('role', '==', 'admin'),
+    where('status', '==', 'approved')
+  );
+  const snapshot = await getDocs(q);
+  const admins = await Promise.all(
+    snapshot.docs.map(async (docSnapshot) => {
+      const member = docToData<GroupMember>(docSnapshot);
+      const profile = await getProfileByUserId(member.user_id);
+      return {
+        ...member,
+        profiles: profile ? { name: profile.name, avatar_url: profile.avatar_url } : undefined,
+      };
+    })
+  );
+  return admins;
+}
+// Promote a group member to admin
+export async function makeGroupMemberAdmin(groupId: string, userId: string): Promise<void> {
+  // Find the group member document for this user in this group
+  const q = query(
+    collection(db, collections.groupMembers),
+    where('group_id', '==', groupId),
+    where('user_id', '==', userId)
+  );
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    const memberDoc = snapshot.docs[0];
+    await updateDoc(memberDoc.ref, { role: 'admin' });
+  } else {
+    throw new Error('Group member not found');
+  }
+}
 // ============ DELETE COMMENT ============
 /**
  * Deletes a comment or reply and all its child replies and likes.

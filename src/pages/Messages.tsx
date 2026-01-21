@@ -165,10 +165,24 @@ export default function Messages() {
           };
         })
       );
-      setConversations([
+      // Merge and deduplicate by group_id for groups and user_id for DMs
+      const allConvs = [
         ...convs,
         ...groupConvs.filter(Boolean) as Conversation[],
-      ]);
+      ];
+      const uniqueConvsMap = new Map();
+      allConvs.forEach(conv => {
+        if (conv.isGroup && conv.group_id) {
+          if (!uniqueConvsMap.has(`group-${conv.group_id}`)) {
+            uniqueConvsMap.set(`group-${conv.group_id}`, conv);
+          }
+        } else if (conv.user_id) {
+          if (!uniqueConvsMap.has(`user-${conv.user_id}`)) {
+            uniqueConvsMap.set(`user-${conv.user_id}`, conv);
+          }
+        }
+      });
+      setConversations(Array.from(uniqueConvsMap.values()));
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -376,8 +390,8 @@ export default function Messages() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSend} className="p-3 border-t border-border bg-card shrink-0">
+      {/* Input always visible, sticky at bottom */}
+      <form onSubmit={handleSend} className="sticky bottom-0 left-0 right-0 z-10 p-3 border-t border-border bg-card safe-area-inset-bottom">
         <div className="flex gap-2">
           <Input
             value={newMessage}

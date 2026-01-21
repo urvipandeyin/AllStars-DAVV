@@ -12,10 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   getGroupById, 
   getGroupMembers, 
+  getGroupAdmins,
   getGroupMessages, 
   checkGroupMembership, 
   sendGroupMessage,
-  subscribeToGroupMessages 
+  subscribeToGroupMessages,
+  makeGroupMemberAdmin
 } from '@/integrations/firebase/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -44,8 +46,22 @@ export default function GroupDetail() {
   const { groupId } = useParams();
   const { user } = useAuth();
   const [group, setGroup] = useState<any>(null);
+    // Helper: is current user the group creator?
+    const isCreator = group && user && group.creator_id === user.uid;
+
+    // Promote member to admin
+    const handleMakeAdmin = async (memberId: string) => {
+      if (!groupId) return;
+      try {
+        await makeGroupMemberAdmin(groupId, memberId);
+        fetchMembers(); // Refresh members list
+      } catch (e) {
+        alert('Failed to make admin: ' + (e as Error).message);
+      }
+    };
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const [showAdminsOnly, setShowAdminsOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
@@ -54,11 +70,27 @@ export default function GroupDetail() {
   useEffect(() => {
     if (groupId) {
       fetchGroup();
-      fetchMembers();
-      fetchMessages();
       checkMembershipStatus();
     }
   }, [groupId, user]);
+
+  useEffect(() => {
+    if (!groupId || group === null) return;
+    if (isMember) {
+      fetchMembers();
+      fetchMessages();
+      setShowAdminsOnly(false);
+    } else {
+      // Not a member: show only admins
+      fetchAdmins();
+      setShowAdminsOnly(true);
+    }
+  }, [groupId, group, isMember]);
+  // Fetch only admins
+  const fetchAdmins = async () => {
+    const data = await getGroupAdmins(groupId!);
+    setMembers(data as GroupMember[]);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -138,7 +170,7 @@ export default function GroupDetail() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] min-h-0">
+    <div className="fixed inset-0 top-14 md:top-24 flex flex-col bg-background h-[100dvh] min-h-0">
       {/* Header */}
       <div className="flex items-center gap-4 p-4 border-b border-border bg-card">
         <Link to="/groups">
@@ -156,15 +188,15 @@ export default function GroupDetail() {
         <InterestTag interest={group.interest} size="sm" />
       </div>
 
-      {isMember ? (
-        <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-          <TabsList className="mx-4 mt-4">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="members">Members</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+        <TabsList className="mx-4 mt-4">
+          {isMember && <TabsTrigger value="chat">Chat</TabsTrigger>}
+          <TabsTrigger value="members">{showAdminsOnly ? 'Admins' : 'Members'}</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="chat" className="flex-1 flex flex-col mt-0 min-h-0">
-            {/* Messages */}
+        <TabsContent value="chat" className="flex-1 flex flex-col mt-0 min-h-0">
+          {/* Messages */}
+          {isMember ? (
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 <div className="text-center py-12">
@@ -203,9 +235,24 @@ export default function GroupDetail() {
               )}
               <div ref={messagesEndRef} />
             </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <Card className="max-w-md w-full">
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Only members can view and participate in this group chat.
+                  </p>
+                  <Link to="/groups">
+                    <Button>Go to Groups</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-            {/* Input */}
-            <form onSubmit={handleSend} className="p-4 border-t border-border bg-card safe-area-inset-bottom">
+          {/* Input always sticky at bottom for members */}
+          {isMember && (
+            <form onSubmit={handleSend} className="sticky bottom-0 left-0 right-0 z-10 p-4 border-t border-border bg-card safe-area-inset-bottom">
               <div className="flex gap-2">
                 <Input
                   value={newMessage}
@@ -218,45 +265,37 @@ export default function GroupDetail() {
                 </Button>
               </div>
             </form>
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          <TabsContent value="members" className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-2">
-              {members.map(member => (
-                <Link
-                  key={member.user_id}
-                  to={`/user/${member.user_id}`}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
+        <TabsContent value="members" className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2">
+            {[...new Map(members.map(m => [m.user_id, m])).values()].map(member => (
+              <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                <Link to={`/user/${member.user_id}`}
+                  className="flex items-center gap-3 flex-1 min-w-0">
                   <Avatar>
                     <AvatarImage src={member.profiles?.avatar_url} />
                     <AvatarFallback className="bg-gradient-primary text-primary-foreground text-sm">
                       {member.profiles?.name?.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium">{member.profiles?.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{member.profiles?.name}</p>
                     <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                   </div>
                 </Link>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full">
-            <CardContent className="py-8 text-center">
-              <p className="text-muted-foreground mb-4">
-                Join this group to see messages and participate in discussions.
-              </p>
-              <Link to="/groups">
-                <Button>Go to Groups</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                {/* Show Make Admin button if current user is creator, member is not creator, and not already admin */}
+                {isCreator && member.role !== 'admin' && member.user_id !== group.creator_id && (
+                  <Button size="sm" variant="outline" onClick={() => handleMakeAdmin(member.user_id)}>
+                    Make Admin
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
