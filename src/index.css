@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AllStars DAVV Design System
+   A vibrant, Gen-Z friendly aesthetic with purple/violet tones and modern gradients
+*/
+
+@layer base {
+  :root {
+    /* Core backgrounds */
+    --background: 250 20% 98%;
+    --foreground: 250 25% 10%;
+
+    /* Cards with soft elevation */
+    --card: 0 0% 100%;
+    --card-foreground: 250 25% 10%;
+
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 250 25% 10%;
+
+    /* Primary - Vibrant Violet */
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Electric Blue */
+    --secondary: 217 91% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted surfaces */
+    --muted: 250 20% 94%;
+    --muted-foreground: 250 10% 45%;
+
+    /* Accent - Soft Pink */
+    --accent: 330 81% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Status colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 250 15% 90%;
+    --input: 250 15% 90%;
+    --ring: 262 83% 58%;
+
+    /* Radius - More rounded for friendly feel */
+    --radius: 1rem;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(280 85% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(217 91% 60%), hsl(200 95% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(330 81% 60%), hsl(280 85% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%), hsl(280 85% 50%), hsl(330 81% 60%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(250 20% 98%));
+    --gradient-star: linear-gradient(135deg, hsl(262 83% 65%), hsl(217 91% 60%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(250 25% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(250 25% 10% / 0.07), 0 2px 4px -2px hsl(250 25% 10% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(250 25% 10% / 0.08), 0 4px 6px -4px hsl(250 25% 10% / 0.05);
+    --shadow-glow: 0 0 25px hsl(262 83% 58% / 0.35);
+    --shadow-glow-pink: 0 0 25px hsl(330 81% 60% / 0.35);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 250 25% 10%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 250 20% 94%;
+    --sidebar-accent-foreground: 250 25% 10%;
+    --sidebar-border: 250 15% 90%;
+    --sidebar-ring: 262 83% 58%;
+
+    /* Interest tag colors - vibrant palette */
+    --tag-sports: 217 91% 55%;
+    --tag-music: 280 85% 55%;
+    --tag-dance: 330 81% 55%;
+    --tag-creative: 45 100% 50%;
+    --tag-theatre: 15 85% 55%;
+    --tag-fitness: 142 71% 45%;
+    --tag-gaming: 262 83% 58%;
+  }
+
+  .dark {
+    --background: 250 25% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 250 25% 10%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 250 25% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 262 83% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 91% 65%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 250 20% 18%;
+    --muted-foreground: 250 10% 60%;
+
+    --accent: 330 81% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 71% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 250 20% 20%;
+    --input: 250 20% 20%;
+    --ring: 262 83% 65%;
+
+    --sidebar-background: 250 25% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 262 83% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 250 20% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 250 20% 20%;
+    --sidebar-ring: 262 83% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .text-gradient-accent {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-accent);
+  }
+
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+
+  .bg-gradient-secondary {
+    background-image: var(--gradient-secondary);
+  }
+
+  .bg-gradient-accent {
+    background-image: var(--gradient-accent);
+  }
+
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+
+  .bg-gradient-star {
+    background-image: var(--gradient-star);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-glow-pink {
+    box-shadow: var(--shadow-glow-pink);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .animate-star-rise {
+    animation: star-rise 1s ease-out;
+  }
+
+  @keyframes star-rise {
+    0% { transform: translateY(20px) scale(0.8); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    0% { box-shadow: 0 0 15px hsl(262 83% 58% / 0.3); }
+    100% { box-shadow: 0 0 30px hsl(262 83% 58% / 0.5); }
+  }
+}
