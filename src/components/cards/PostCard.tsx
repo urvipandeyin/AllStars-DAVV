@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -48,8 +48,9 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const [replyText, setReplyText] = useState('');
   const [commentLikes, setCommentLikes] = useState<{ [key: string]: { liked: boolean; count: number } }>({});
   const [newComment, setNewComment] = useState('');
+  const likesUnsubRefs = useRef<{ [key: string]: () => void }>({});
 
-  const postType = POST_TYPES[post.post_type];
+  const postType = POST_TYPES[post.post_type] || { label: 'Unknown', icon: '', color: '' };
   const isOwner = user?.uid === post.user_id;
 
   // Real-time listener for post likes
@@ -91,9 +92,13 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     setTimeout(() => setLikeAnimating(false), 500);
   };
 
+  // Real-time listener for comments and replies, and their likes
   useEffect(() => {
     if (!showComments) return;
-    // Real-time listener for comments and likes
+    // Unsubscribe previous likes listeners
+    Object.values(likesUnsubRefs.current).forEach(unsub => unsub && unsub());
+    likesUnsubRefs.current = {};
+
     const commentsQuery = query(
       collection(db, 'comments'),
       where('post_id', '==', post.id),
@@ -111,22 +116,29 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         return { ...comment, profiles: profile ? { name: profile.name, avatar_url: profile.avatar_url } : undefined };
       }));
       setComments(data || []);
-      // Real-time likes for each comment
+
+      // Real-time likes for each comment/reply
       const likesObj: { [key: string]: { liked: boolean; count: number } } = {};
-      await Promise.all(data.map(async (comment) => {
+      data.forEach(comment => {
         const likesQuery = query(
           collection(db, 'comment_likes'),
           where('comment_id', '==', comment.id)
         );
-        const likesSnap = await getDocs(likesQuery);
-        likesObj[comment.id] = {
-          liked: user ? likesSnap.docs.some(doc => doc.data().user_id === user.uid) : false,
-          count: likesSnap.size,
-        };
-      }));
-      setCommentLikes(likesObj);
+        const unsub = onSnapshot(likesQuery, (likesSnap) => {
+          likesObj[comment.id] = {
+            liked: user ? likesSnap.docs.some(doc => doc.data().user_id === user.uid) : false,
+            count: likesSnap.size,
+          };
+          setCommentLikes(prev => ({ ...prev, ...likesObj }));
+        });
+        likesUnsubRefs.current[comment.id] = unsub;
+      });
     });
-    return () => unsubscribeComments();
+    return () => {
+      unsubscribeComments();
+      Object.values(likesUnsubRefs.current).forEach(unsub => unsub && unsub());
+      likesUnsubRefs.current = {};
+    };
     // eslint-disable-next-line
   }, [showComments, user, post.id]);
 
@@ -182,37 +194,17 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     const liked = commentLikes[commentId]?.liked;
     if (liked) {
       await unlikeComment(commentId, user.uid);
-      setCommentLikes(prev => ({
-        ...prev,
-        [commentId]: {
-          ...prev[commentId],
-          liked: false,
-          count: Math.max(0, (prev[commentId]?.count || 1) - 1),
-        },
-      }));
     } else {
       await likeComment(commentId, user.uid);
-      setCommentLikes(prev => ({
-        ...prev,
-        [commentId]: {
-          ...prev[commentId],
-          liked: true,
-          count: (prev[commentId]?.count || 0) + 1,
-        },
-      }));
     }
+    // UI will update in real-time via Firestore listener
   };
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) return;
     try {
       await deleteComment(commentId);
-      setComments(prev => prev.filter(c => c.id !== commentId && c.parent_comment_id !== commentId));
-      setCommentLikes(prev => {
-        const newLikes = { ...prev };
-        delete newLikes[commentId];
-        return newLikes;
-      });
+      // UI will update in real-time via Firestore listener
     } catch (e) {
       toast({ title: 'Failed to delete comment', variant: 'destructive' });
     }
@@ -270,7 +262,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               post.post_type === 'looking_for_collaborators' && 'bg-secondary/10 text-secondary',
               post.post_type === 'update' && 'bg-accent/10 text-accent'
             )}>
-              {postType.label}
+              {typeof postType.label === 'string' ? postType.label : 'Unknown'}
             </span>
 
             {post.interest_category && (
